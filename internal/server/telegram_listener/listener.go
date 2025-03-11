@@ -63,6 +63,11 @@ func (l *Listener) Listen() error {
 						msg := l.commands.FillDiet(context.Background(), &update)
 
 						l.bot.Send(msg)
+
+					} else if l.commands.IsFillProducts(context.Background(), &update) {
+						msg := l.commands.FillProducts(context.Background(), &update)
+
+						l.bot.Send(msg)
 					}
 				}
 			} else if update.CallbackQuery != nil {

@@ -14,6 +14,10 @@ const (
 )
 
 const (
+	EventMainMenu = "main_menu"
+)
+
+const (
 	StateCreateDiet                        = "create_diet"
 	StateCreateDiet_LifeStyle              = "create_diet_life_style"
 	StateCreateDiet_TimeRestrictions       = "create_diet_time_restrictions"
@@ -25,27 +29,27 @@ const (
 )
 
 const (
-	StateCreateFoodConfiguration                  = "create_food_configuration"
 	StateCreateFoodConfiguration_BreakfastCereals = "create_food_configuration_breakfast_cereals"
 	StateCreateFoodConfiguration_SideDishCereals  = "create_food_configuration_side_dish_cereals"
 	StateCreateFoodConfiguration_Vegetables       = "create_food_configuration_vegetables"
 	StateCreateFoodConfiguration_Fruits           = "create_food_configuration_fruits"
 	StateCreateFoodConfiguration_NutsAndSeeds     = "create_food_configuration_nuts_and_seeds"
 	StateCreateFoodConfiguration_DairyProducts    = "create_food_configuration_dairy_products"
+	StateCreateFoodConfiguration_Bread            = "create_food_configuration_bread"
 	StateCreateFoodConfiguration_Fish             = "create_food_configuration_fish"
 	StateCreateFoodConfiguration_Meat             = "create_food_configuration_meat"
 	StateCreateFoodConfiguration_Eggs             = "create_food_configuration_eggs"
 )
 
 type BotFSM struct {
-	FSM *fsm.FSM
+	FSM  *fsm.FSM
 	Chat *entity.Chat
 }
 
 func NewBotFSM(chat *entity.Chat) *BotFSM {
 	events := fsm.Events{
 		{
-			Name: "show_menu",
+			Name: EventMainMenu,
 			Src:  []string{},
 			Dst:  StateMenu,
 		},

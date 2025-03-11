@@ -9,7 +9,6 @@ const (
 	EventCreateDietCalories               = "create_diet_calories"
 	EventCreateDietNutritionPrinciples    = "create_diet_nutrition_principles"
 	EventCreateDietIndividualRestrictions = "create_diet_individual_restrictions"
-	EventCreateDietFoodConfiguration      = "create_diet_food_configuration"
 )
 
 func CreateDietFlow() fsm.Events {
@@ -43,11 +42,6 @@ func CreateDietFlow() fsm.Events {
 			Name: EventCreateDietIndividualRestrictions,
 			Src:  []string{StateCreateDiet_NutritionPrinciples},
 			Dst:  StateCreateDiet_IndividualRestrictions,
-		},
-		{
-			Name: EventCreateDietFoodConfiguration,
-			Src:  []string{StateCreateDiet_IndividualRestrictions},
-			Dst:  StateCreateDiet_FoodConfiguration,
 		},
 	}
 }
