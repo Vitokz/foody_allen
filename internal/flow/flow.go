@@ -76,3 +76,8 @@ func (b *BotFSM) Event(event string) error {
 
 	return nil
 }
+
+func (b *BotFSM) SetState(event string) {
+	b.FSM.SetState(event)
+	b.Chat.State = b.FSM.Current()
+}

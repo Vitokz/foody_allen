@@ -2,15 +2,140 @@ package creatediet
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/google/uuid"
-	"go.mongodb.org/mongo-driver/mongo"
 
 	"diet_bot/internal/entity"
 	"diet_bot/internal/flow"
 )
+
+// Define a food category configuration struct
+type FillConfig struct {
+	State       string
+	NextEvent   string
+	PromptText  string
+	ExampleText string
+	FieldSetter func(config *entity.DietConfiguration, value string) error
+}
+
+var dietFillmentFlow = []FillConfig{
+	{
+		State:     "-",
+		NextEvent: flow.EventCreateDiet,
+		PromptText: `🚀 Ну штош начнем
+
+Опиши свой образ жизни своими словами в свободной форме.`,
+		ExampleText: `Работаю в офисе, сижу за компьютером. В день прохожу примерно 3 км. 
+Занимаюсь кроссфитом 4 раза в неделю, по 2-3 часа каждая тренировка.`,
+		FieldSetter: func(config *entity.DietConfiguration, value string) error {
+			config.LifestyleAndWorkouts = value
+			return nil
+		},
+	},
+	{
+		State:     flow.StateCreateDiet_LifeStyle,
+		NextEvent: flow.EventCreateDietTimeRestrictions,
+		PromptText: `🚀 Ну штош начнем
+
+Опиши свой образ жизни своими словами в свободной форме.`,
+		ExampleText: `Работаю в офисе, сижу за компьютером. В день прохожу примерно 3 км. 
+Занимаюсь кроссфитом 4 раза в неделю, по 2-3 часа каждая тренировка.`,
+		FieldSetter: func(config *entity.DietConfiguration, value string) error {
+			config.LifestyleAndWorkouts = value
+			return nil
+		},
+	},
+	{
+		State:       flow.StateCreateDiet_TimeRestrictions,
+		NextEvent:   flow.EventCreateDietPFC,
+		PromptText:  `Какие у тебя есть ограничения по времени?`,
+		ExampleText: `Тренировка с 18:00 до 21:00, по-этому нет возможности есть в это время.`,
+		FieldSetter: func(config *entity.DietConfiguration, value string) error {
+			config.TimeRestrictions = value
+			return nil
+		},
+	},
+	{
+		State:     flow.StateCreateDiet_PFC,
+		NextEvent: flow.EventCreateDietCalories,
+		PromptText: `Введи количество белков, жиров и углеводов в процентах.
+
+Формат: 30/30/40`,
+		ExampleText: `20/30/50`,
+		FieldSetter: func(config *entity.DietConfiguration, value string) error {
+			if err := config.PFC.ParsePFC(value); err != nil {
+				return err
+			}
+			return nil
+		},
+	},
+	{
+		State:     flow.StateCreateDiet_Calories,
+		NextEvent: flow.EventCreateDietNutritionPrinciples,
+		PromptText: `Какое количество калорий тебе нужно в день?
+
+Формат: 2000`,
+		ExampleText: `3250`,
+		FieldSetter: func(config *entity.DietConfiguration, value string) error {
+			calories, err := strconv.Atoi(value)
+			if err != nil {
+				return err
+			}
+			config.Calories = calories
+			return nil
+		},
+	},
+	{
+		State:     flow.StateCreateDiet_NutritionPrinciples,
+		NextEvent: flow.EventCreateDietIndividualRestrictions,
+		PromptText: `Какие принципы питания ты хочешь поддерживать?
+
+Формат свободный, но чтобы было понятно, что это за принципы.`,
+		ExampleText: `1. Без перекусов.
+2. Дробное питание на 5 приемов.
+3. Разнообразие рациона.
+4. Упор на медленные углеводы и овощи.
+5. Завтрак - самый главный прием пищи.`,
+		FieldSetter: func(config *entity.DietConfiguration, value string) error {
+			config.NutritionPrinciples = value
+			return nil
+		},
+	},
+	{
+		State:     flow.StateCreateDiet_IndividualRestrictions,
+		NextEvent: flow.EventCreateFoodConfiguration,
+		PromptText: `Какие у тебя есть ограничения?
+
+Формат свободный, но чтобы было понятно, что это за ограничения.`,
+		ExampleText: `1. Не есть после 18:00.
+2. Не есть сладкое.
+3. Не использовать бобовые
+4. Не использовать зеленый лук и болгарский перец.
+5. Должно быть два вида гарнира, чтобы не приходилось готовить слишком много
+6. Должен быть 1 тип рыбы. Чтобы не готовить слишком много
+7. Должен быть 1 тип мяса. Чтобы не готовить слишком много
+8. Два вида тушеных овощей вместо множества отдельных блюд. Чтобы не готовить слишком много.`,
+		FieldSetter: func(config *entity.DietConfiguration, value string) error {
+			config.IndividualRestrictions = value
+			return nil
+		},
+	},
+}
+
+// Map state to config for quick lookup
+var flowConfigMap map[string]FillConfig
+
+func init() {
+	flowConfigMap = make(map[string]FillConfig)
+	for _, config := range dietFillmentFlow {
+		flowConfigMap[config.State] = config
+	}
+	for _, config := range foodCategoryFlow {
+		flowConfigMap[config.State] = config
+	}
+}
 
 func (c *Commands) IsFillDiet(ctx context.Context, update *tgbotapi.Update) bool {
 	meta := entity.NewMeta(update)
@@ -33,6 +158,14 @@ func (c *Commands) IsFillDiet(ctx context.Context, update *tgbotapi.Update) bool
 }
 
 func (c *Commands) FillDiet(ctx context.Context, update *tgbotapi.Update) tgbotapi.Chattable {
+	return c.executeFillment(ctx, flowConfigMap, update)
+}
+
+func (c *Commands) executeFillment(
+	_ context.Context,
+	flowConfig map[string]FillConfig,
+	update *tgbotapi.Update,
+) tgbotapi.Chattable {
 	meta := entity.NewMeta(update)
 
 	chat, err := c.repository.GetChat(meta.ChatID)
@@ -43,181 +176,64 @@ func (c *Commands) FillDiet(ctx context.Context, update *tgbotapi.Update) tgbota
 
 	dietConfiguration, err := c.repository.GetDietConfiguration(chat.UserID)
 	if err != nil {
-		if err != mongo.ErrNoDocuments {
-			c.logger.Errorw("Error upserting diet configuration", "error", err)
-			return tgbotapi.NewMessage(meta.ChatID, "Произошла ошибка нажмите /start еще раз")
-		}
-
-		dietConfiguration = &entity.DietConfiguration{
-			ID:     uuid.New().String(),
-			UserID: chat.UserID,
-		}
+		c.logger.Errorw("Error getting diet configuration", "error", err)
+		return tgbotapi.NewMessage(meta.ChatID, "Произошла ошибка нажмите /start еще раз")
 	}
 
 	botFSM := flow.NewBotFSM(chat)
 
-	switch chat.State {
-	case flow.StateCreateDiet_LifeStyle:
-		return c.lifeStyleFillment(ctx, botFSM, meta, chat, dietConfiguration)
-	case flow.StateCreateDiet_TimeRestrictions:
-		return c.timeRestrictionsFillment(ctx, botFSM, meta, chat, dietConfiguration)
-	case flow.StateCreateDiet_PFC:
-		return c.pfcFillment(ctx, botFSM, meta, chat, dietConfiguration)
-	case flow.StateCreateDiet_Calories:
-		return c.caloriesFillment(ctx, botFSM, meta, chat, dietConfiguration)
-	case flow.StateCreateDiet_NutritionPrinciples:
-		return c.nutritionPrinciplesFillment(ctx, botFSM, meta, chat, dietConfiguration)
-	case flow.StateCreateDiet_IndividualRestrictions:
-		return c.individualRestrictionsFillment(ctx, botFSM, meta, chat, dietConfiguration)
-	default:
+	// Get the config for current state
+	config, exists := flowConfig[chat.State]
+	if !exists {
+		return tgbotapi.NewMessage(meta.ChatID, "Произошла ошибка при формировании продуктов")
 	}
 
-	return tgbotapi.NewMessage(meta.ChatID, "Произошла ошибка при создании диеты")
-}
-
-func (c *Commands) lifeStyleFillment(
-	ctx context.Context,
-	botFSM *flow.BotFSM,
-	meta *entity.TelegramMeta,
-	chat *entity.Chat,
-	dietConfiguration *entity.DietConfiguration,
-) tgbotapi.Chattable {
-	dietConfiguration.LifestyleAndWorkouts = meta.Message.Text
-
-	msg, err := c.TimeRestrictionsHandler(ctx, meta, chat, dietConfiguration, botFSM)
+	// Set the field value
+	err = config.FieldSetter(dietConfiguration, meta.Message.Text)
 	if err != nil {
-		c.logger.Errorw("Error creating diet time restrictions", "error", err)
-		return tgbotapi.NewMessage(meta.ChatID, "Произошла ошибка при создании диеты")
+		return tgbotapi.NewMessage(meta.ChatID, err.Error())
 	}
 
+	if config.NextEvent != flow.EventMainMenu {
+		if err := botFSM.Event(config.NextEvent); err != nil {
+			c.logger.Errorw("Error transitioning to next food category", "error", err)
+			return tgbotapi.NewMessage(meta.ChatID, "Произошла ошибка при переходе к следующему шагу")
+		}
+	} else {
+		botFSM.SetState(flow.StateMenu)
+	}
+
+	// Save configuration
 	err = c.saveDietConfiguration(chat, dietConfiguration)
 	if err != nil {
 		return tgbotapi.NewMessage(meta.ChatID, "Произошла ошибка при сохранении данных")
 	}
+
+	// If this was the last category, complete the flow
+	if config.NextEvent == flow.EventMainMenu {
+		return tgbotapi.NewMessage(meta.ChatID, "Конфигурация завершена!")
+	}
+
+	// Otherwise, transition to the next category
+	nextConfig := flowConfig[chat.State]
+	// Return prompt for next category
+	msg := makeResponseMsg(meta, nextConfig.PromptText, nextConfig.ExampleText)
 
 	return msg
 }
 
-func (c *Commands) timeRestrictionsFillment(
-	ctx context.Context,
-	botFSM *flow.BotFSM,
+func makeResponseMsg(
 	meta *entity.TelegramMeta,
-	chat *entity.Chat,
-	dietConfiguration *entity.DietConfiguration,
+	mainText string,
+	exampleText string,
 ) tgbotapi.Chattable {
-	dietConfiguration.TimeRestrictions = meta.Message.Text
+	msg := tgbotapi.NewMessage(meta.ChatID, "")
+	msg.ParseMode = "MarkdownV2"
 
-	msg, err := c.PFCHandler(ctx, meta, chat, dietConfiguration, botFSM)
-	if err != nil {
-		c.logger.Errorw("Error creating diet pfc", "error", err)
-		return tgbotapi.NewMessage(meta.ChatID, "Произошла ошибка при создании диеты")
-	}
+	mainText = tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, mainText)
+	exampleText = tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, exampleText)
 
-	err = c.saveDietConfiguration(chat, dietConfiguration)
-	if err != nil {
-		return tgbotapi.NewMessage(meta.ChatID, "Произошла ошибка при сохранении данных")
-	}
-
-	return msg
-}
-
-func (c *Commands) pfcFillment(
-	ctx context.Context,
-	botFSM *flow.BotFSM,
-	meta *entity.TelegramMeta,
-	chat *entity.Chat,
-	dietConfiguration *entity.DietConfiguration,
-) tgbotapi.Chattable {
-	if err := dietConfiguration.PFC.ParsePFC(meta.Message.Text); err != nil {
-		c.logger.Errorw("Error parsing PFC", "error", err)
-		return tgbotapi.NewMessage(meta.ChatID, "Неправильный формат БЖУ")
-	}
-
-	msg, err := c.CaloriesHandler(ctx, meta, chat, dietConfiguration, botFSM)
-	if err != nil {
-		c.logger.Errorw("Error creating diet calories", "error", err)
-		return tgbotapi.NewMessage(meta.ChatID, "Произошла ошибка при создании диеты")
-	}
-
-	err = c.saveDietConfiguration(chat, dietConfiguration)
-	if err != nil {
-		return tgbotapi.NewMessage(meta.ChatID, "Произошла ошибка при сохранении данных")
-	}
-
-	return msg
-}
-
-func (c *Commands) caloriesFillment(
-	ctx context.Context,
-	botFSM *flow.BotFSM,
-	meta *entity.TelegramMeta,
-	chat *entity.Chat,
-	dietConfiguration *entity.DietConfiguration,
-) tgbotapi.Chattable {
-	calories, err := strconv.Atoi(meta.Message.Text)
-	if err != nil {
-		c.logger.Errorw("Error converting calories to int", "error", err)
-		return tgbotapi.NewMessage(meta.ChatID, "Неправильный формат количества калорий")
-	}
-
-	dietConfiguration.Calories = calories
-
-	msg, err := c.NutritionPrinciplesHandler(ctx, meta, chat, dietConfiguration, botFSM)
-	if err != nil {
-		c.logger.Errorw("Error creating diet nutrition principles", "error", err)
-		return tgbotapi.NewMessage(meta.ChatID, "Произошла ошибка при создании диеты")
-	}
-
-	err = c.saveDietConfiguration(chat, dietConfiguration)
-	if err != nil {
-		return tgbotapi.NewMessage(meta.ChatID, "Произошла ошибка при сохранении данных")
-	}
-
-	return msg
-}
-
-func (c *Commands) nutritionPrinciplesFillment(
-	ctx context.Context,
-	botFSM *flow.BotFSM,
-	meta *entity.TelegramMeta,
-	chat *entity.Chat,
-	dietConfiguration *entity.DietConfiguration,
-) tgbotapi.Chattable {
-	dietConfiguration.NutritionPrinciples = meta.Message.Text
-
-	msg, err := c.IndividualRestrictionsHandler(ctx, meta, chat, dietConfiguration, botFSM)
-	if err != nil {
-		c.logger.Errorw("Error creating diet individual restrictions", "error", err)
-	}
-
-	err = c.saveDietConfiguration(chat, dietConfiguration)
-	if err != nil {
-		c.logger.Errorw("Error saving diet configuration", "error", err)
-		return tgbotapi.NewMessage(meta.ChatID, "Произошла ошибка при сохранении данных")
-	}
-
-	return msg
-}
-
-func (c *Commands) individualRestrictionsFillment(
-	ctx context.Context,
-	botFSM *flow.BotFSM,
-	meta *entity.TelegramMeta,
-	chat *entity.Chat,
-	dietConfiguration *entity.DietConfiguration,
-) tgbotapi.Chattable {
-	dietConfiguration.IndividualRestrictions = meta.Message.Text
-
-	msg, err := c.FoodConfigurationHandler(ctx, meta, chat, dietConfiguration, botFSM)
-	if err != nil {
-		c.logger.Errorw("Error creating diet food configuration", "error", err)
-		return tgbotapi.NewMessage(meta.ChatID, "Произошла ошибка при создании диеты")
-	}
-
-	err = c.saveDietConfiguration(chat, dietConfiguration)
-	if err != nil {
-		return tgbotapi.NewMessage(meta.ChatID, "Произошла ошибка при сохранении данных")
-	}
+	msg.Text = fmt.Sprintf("\n❓ %s\n\nПример:\n```\n%s\n```\n", mainText, exampleText)
 
 	return msg
 }
