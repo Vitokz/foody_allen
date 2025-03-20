@@ -5,10 +5,12 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 type DietConfiguration struct {
-	ID                     string            `json:"id" bson:"_id"`
+	ID                     uuid.UUID         `json:"id" bson:"_id"`
 	UserID                 int64             `json:"user_id" bson:"user_id"`
 	LifestyleAndWorkouts   string            `json:"lifestyle_and_workouts" bson:"lifestyle_and_workouts"`
 	TimeRestrictions       string            `json:"time_restrictions" bson:"time_restrictions"`
@@ -24,9 +26,9 @@ func (d *DietConfiguration) CollectionName() string {
 }
 
 type PFC struct {
-	Proteins int `json:"proteins" bson:"proteins"`
-	Fats     int `json:"fats" bson:"fats"`
-	Carbs    int `json:"carbs" bson:"carbs"`
+	Proteins float64 `json:"proteins" bson:"proteins" jsonschema_description:"Количество белков"`
+	Fats     float64 `json:"fats" bson:"fats" jsonschema_description:"Количество жиров"`
+	Carbs    float64 `json:"carbs" bson:"carbs" jsonschema_description:"Количество углеводов"`
 }
 
 func (p *PFC) ParsePFC(pfc string) error {
@@ -45,19 +47,19 @@ func (p *PFC) ParsePFC(pfc string) error {
 		return fmt.Errorf("invalid PFC format")
 	}
 
-	proteins, err := strconv.Atoi(parts[0])
+	proteins, err := strconv.ParseFloat(parts[0], 64)
 	if err != nil {
-		return fmt.Errorf("error converting proteins to int: %w", err)
+		return fmt.Errorf("error converting proteins to float64: %w", err)
 	}
 
-	fats, err := strconv.Atoi(parts[1])
+	fats, err := strconv.ParseFloat(parts[1], 64)
 	if err != nil {
-		return fmt.Errorf("error converting fats to int: %w", err)
+		return fmt.Errorf("error converting fats to float64: %w", err)
 	}
 
-	carbs, err := strconv.Atoi(parts[2])
+	carbs, err := strconv.ParseFloat(parts[2], 64)
 	if err != nil {
-		return fmt.Errorf("error converting carbs to int: %w", err)
+		return fmt.Errorf("error converting carbs to float64: %w", err)
 	}
 
 	*p = PFC{

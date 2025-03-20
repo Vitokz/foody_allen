@@ -9,6 +9,14 @@ import (
 )
 
 const (
+	CommandStart        = "/start"
+	CommandGenerateDiet = "/generate_diet"
+	CommandMainMenu     = "/main_menu"
+	CommandSeeDiet      = "/see_diet"
+	CommandSeeDietDay   = "/see_diet_day_"
+)
+
+const (
 	StateStart = "start"
 	StateMenu  = "menu"
 )

@@ -6,6 +6,7 @@ import (
 
 	"github.com/joho/godotenv"
 
+	"diet_bot/internal/clients/gpt"
 	"diet_bot/internal/commands"
 	"diet_bot/internal/lib/logger"
 	"diet_bot/internal/repository"
@@ -27,10 +28,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
 	defer database.Close()
 
-	commands := commands.NewCommands(database, logger)
+	aiClient := gpt.NewClient(os.Getenv("OPENAI_API_KEY"), os.Getenv("OPENAI_BASE_URL"))
+
+	commands := commands.NewCommands(database, aiClient, logger)
 
 	listener, err := telegramlistener.NewListener(os.Getenv("TELEGRAM_BOT_TOKEN"), commands, logger)
 	if err != nil {

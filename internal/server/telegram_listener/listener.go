@@ -7,6 +7,7 @@ import (
 	"go.uber.org/zap"
 
 	"diet_bot/internal/commands"
+	seediet "diet_bot/internal/commands/see-diet"
 	"diet_bot/internal/flow"
 )
 
@@ -52,10 +53,16 @@ func (l *Listener) Listen() error {
 		case update := <-updates:
 			if update.Message != nil {
 				switch update.Message.Text {
-				case "/start":
+				case flow.CommandStart:
 					l.logger.Info("User started the bot")
 
 					msg := l.commands.StartHandler(context.Background(), &update)
+
+					l.bot.Send(msg)
+				case flow.CommandGenerateDiet:
+					l.logger.Info("User pressed the generate diet button")
+
+					msg := l.commands.GenerateDietHandler(context.Background(), &update)
 
 					l.bot.Send(msg)
 				default:
@@ -74,11 +81,25 @@ func (l *Listener) Listen() error {
 				callback := tgbotapi.NewCallback(update.CallbackQuery.ID, "")
 				l.bot.Request(callback)
 
-				switch update.CallbackQuery.Data {
-				case flow.EventCreateDiet:
+				data := update.CallbackQuery.Data
+
+				switch {
+				case data == flow.EventCreateDiet:
 					l.logger.Info("User pressed the create diet button")
 
 					msg := l.commands.CreateDietHandler(context.Background(), &update)
+
+					l.bot.Send(msg)
+				case data == flow.CommandSeeDiet:
+					l.logger.Info("User pressed the see diet button")
+
+					msg := l.commands.SeeDietHandler(context.Background(), &update)
+
+					l.bot.Send(msg)
+				case seediet.CommandHasDietDay(data):
+					l.logger.Info("User pressed the see diet day button")
+
+					msg := l.commands.SeeDietDayHandler(context.Background(), &update)
 
 					l.bot.Send(msg)
 				default:

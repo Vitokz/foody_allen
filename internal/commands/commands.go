@@ -7,22 +7,28 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"go.uber.org/zap"
 
-	creatediet "diet_bot/internal/commands/create-diet"
+	filldiet "diet_bot/internal/commands/fill-diet"
+	generatediet "diet_bot/internal/commands/generate-diet"
+	seediet "diet_bot/internal/commands/see-diet"
 	"diet_bot/internal/entity"
 	"diet_bot/internal/flow"
 )
 
 type Commands struct {
-	*creatediet.Commands
+	*filldiet.Commands
+	*generatediet.Command
+	*seediet.DietCommand
 	logger     *zap.SugaredLogger
 	repository Repository
 }
 
-func NewCommands(repository Repository, logger *zap.SugaredLogger) *Commands {
+func NewCommands(repository Repository, aiClient generatediet.AIClient, logger *zap.SugaredLogger) *Commands {
 	return &Commands{
-		Commands:   creatediet.NewCommands(repository, logger),
-		repository: repository,
-		logger:     logger,
+		Commands:    filldiet.NewCommands(repository, logger),
+		Command:     generatediet.NewCommand(repository, aiClient, logger),
+		DietCommand: seediet.NewDietCommand(repository, logger),
+		repository:  repository,
+		logger:      logger,
 	}
 }
 

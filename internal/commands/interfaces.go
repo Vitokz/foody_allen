@@ -11,4 +11,7 @@ type Repository interface {
 
 	UpsertDietConfiguration(dietConfiguration *entity.DietConfiguration) error
 	GetDietConfiguration(userID int64) (*entity.DietConfiguration, error)
+
+	CreateDiet(diet *entity.GeneratedDiet) error
+	GetDiet(userID int64) (*entity.GeneratedDiet, error)
 }

@@ -90,18 +90,10 @@ func (c *Client) GetUser(id int64) (*entity.User, error) {
 	return user, err
 }
 
-func (c *Client) SaveChat(chat *entity.Chat) error {
-	collection := c.db.Collection(chat.CollectionName())
-
-	_, err := collection.InsertOne(context.TODO(), chat)
-
-	return err
-}
-
 func (c *Client) UpsertChat(chat *entity.Chat) error {
 	collection := c.db.Collection(chat.CollectionName())
 
-	filter := bson.M{"id": chat.ID}
+	filter := bson.M{"_id": chat.ID}
 	update := bson.D{
 		{Key: "$set", Value: bson.D{
 			{Key: "user_id", Value: chat.UserID},
@@ -120,7 +112,7 @@ func (c *Client) GetChat(id int64) (*entity.Chat, error) {
 
 	collection := c.db.Collection(chat.CollectionName())
 
-	err := collection.FindOne(context.TODO(), bson.M{"id": id}).Decode(chat)
+	err := collection.FindOne(context.TODO(), bson.M{"_id": id}).Decode(chat)
 
 	return chat, err
 }
@@ -128,8 +120,8 @@ func (c *Client) GetChat(id int64) (*entity.Chat, error) {
 func (c *Client) UpsertDietConfiguration(dietConfiguration *entity.DietConfiguration) error {
 	collection := c.db.Collection(dietConfiguration.CollectionName())
 
-	if dietConfiguration.ID == "" {
-		dietConfiguration.ID = uuid.New().String()
+	if dietConfiguration.ID == uuid.Nil {
+		dietConfiguration.ID = uuid.New()
 	}
 
 	filter := bson.M{"user_id": dietConfiguration.UserID}
@@ -149,4 +141,22 @@ func (c *Client) GetDietConfiguration(userID int64) (*entity.DietConfiguration, 
 	err := collection.FindOne(context.TODO(), bson.M{"user_id": userID}).Decode(dietConfiguration)
 
 	return dietConfiguration, err
+}
+
+func (c *Client) CreateDiet(diet *entity.GeneratedDiet) error {
+	collection := c.db.Collection(diet.CollectionName())
+
+	_, err := collection.InsertOne(context.TODO(), diet)
+
+	return err
+}
+
+func (c *Client) GetDiet(userID int64) (*entity.GeneratedDiet, error) {
+	diet := &entity.GeneratedDiet{}
+
+	collection := c.db.Collection(diet.CollectionName())
+
+	err := collection.FindOne(context.TODO(), bson.M{"user_id": userID}).Decode(diet)
+
+	return diet, err
 }
