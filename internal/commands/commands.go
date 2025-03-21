@@ -78,7 +78,7 @@ func (c *Commands) StartHandler(ctx context.Context, update *tgbotapi.Update) tg
 		return tgbotapi.NewMessage(meta.ChatID, "Произошла ошибка нажмите /start еще раз")
 	}
 
-	button := tgbotapi.NewInlineKeyboardButtonData("Заполнить конфигурацию", flow.EventCreateDiet)
+	button := tgbotapi.NewInlineKeyboardButtonData("Заполнить конфигурацию", flow.CommandFillConfig)
 	keyboard := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(button))
 	msg := tgbotapi.NewMessage(meta.ChatID, StartCommand)
 	msg.ReplyMarkup = keyboard

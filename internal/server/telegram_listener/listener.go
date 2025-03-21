@@ -32,6 +32,8 @@ func NewListener(
 
 	bot.Debug = true
 
+	setupBotCommands(bot)
+
 	return &Listener{
 		bot:      bot,
 		commands: commands,
@@ -59,6 +61,12 @@ func (l *Listener) Listen() error {
 					msg := l.commands.StartHandler(context.Background(), &update)
 
 					l.bot.Send(msg)
+				case flow.CommandMenu:
+					l.logger.Info("User pressed the menu button")
+
+					msg := l.commands.MenuHandler(context.Background(), &update)
+
+					l.bot.Send(msg)
 				case flow.CommandGenerateDiet:
 					l.logger.Info("User pressed the generate diet button")
 
@@ -84,8 +92,39 @@ func (l *Listener) Listen() error {
 				data := update.CallbackQuery.Data
 
 				switch {
-				case data == flow.EventCreateDiet:
-					l.logger.Info("User pressed the create diet button")
+				case data == flow.CommandMenu:
+					l.logger.Info("User pressed the menu button")
+
+					// 1. Удаляем сообщение, в котором была нажата кнопка
+					deleteMsg := tgbotapi.NewDeleteMessage(update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.Message.MessageID)
+					_, err := l.bot.Send(deleteMsg)
+					if err != nil {
+						l.logger.Error("Failed to delete message", zap.Error(err))
+					}
+
+					// 2. Отправляем новое сообщение
+					msg := l.commands.MenuHandler(context.Background(), &update)
+					l.bot.Send(msg)
+				case data == flow.CommandSeeDietProducts:
+					l.logger.Info("User pressed the see diet products button")
+
+					l.deleteMessage(update.CallbackQuery.Message.MessageID, &update)
+
+					msg := l.commands.SeeDietProductsHandler(context.Background(), &update)
+
+					l.bot.Send(msg)
+				case data == flow.CommandGenerateDiet:
+					l.logger.Info("User pressed the generate diet button")
+
+					l.deleteMessage(update.CallbackQuery.Message.MessageID, &update)
+
+					msg := l.commands.GenerateDietHandler(context.Background(), &update)
+
+					l.bot.Send(msg)
+				case data == flow.CommandFillConfig:
+					l.logger.Info("User pressed the fill config button")
+
+					l.deleteMessage(update.CallbackQuery.Message.MessageID, &update)
 
 					msg := l.commands.CreateDietHandler(context.Background(), &update)
 
@@ -93,11 +132,15 @@ func (l *Listener) Listen() error {
 				case data == flow.CommandSeeDiet:
 					l.logger.Info("User pressed the see diet button")
 
+					l.deleteMessage(update.CallbackQuery.Message.MessageID, &update)
+
 					msg := l.commands.SeeDietHandler(context.Background(), &update)
 
 					l.bot.Send(msg)
 				case seediet.CommandHasDietDay(data):
 					l.logger.Info("User pressed the see diet day button")
+
+					l.deleteMessage(update.CallbackQuery.Message.MessageID, &update)
 
 					msg := l.commands.SeeDietDayHandler(context.Background(), &update)
 
@@ -114,4 +157,12 @@ func (l *Listener) Listen() error {
 
 func (l *Listener) Stop() {
 	close(l.exitChan)
+}
+
+func (l *Listener) deleteMessage(messageID int, update *tgbotapi.Update) {
+	deleteMsg := tgbotapi.NewDeleteMessage(update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.Message.MessageID)
+	_, err := l.bot.Send(deleteMsg)
+	if err != nil {
+		l.logger.Error("Failed to delete message", zap.Error(err))
+	}
 }

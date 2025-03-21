@@ -74,7 +74,7 @@ func (c *Command) GenerateDietHandler(ctx context.Context, update *tgbotapi.Upda
 	msg := tgbotapi.NewMessage(meta.ChatID, "Рацион успешно создан!")
 	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("Посмотреть рацион", flow.CommandSeeDiet),
+			tgbotapi.NewInlineKeyboardButtonData("🥗 Посмотреть рацион", flow.CommandSeeDiet),
 		),
 	)
 

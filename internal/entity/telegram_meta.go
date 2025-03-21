@@ -1,8 +1,6 @@
 package entity
 
 import (
-	"fmt"
-
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -16,17 +14,17 @@ type TelegramMeta struct {
 func NewMeta(update *tgbotapi.Update) *TelegramMeta {
 	msg := update.Message
 
+	isCallback := false
 	if msg == nil {
 		msg = update.CallbackQuery.Message
+		isCallback = true
 	}
 
 	chatID := msg.Chat.ID
 	userID := msg.From.ID
-
-	fmt.Println(msg.Chat)
-	fmt.Println(msg.From)
-	fmt.Println("Смотри какой ID", msg.From.ID)
-	fmt.Println("Смотри какой у чата ID", msg.Chat.ID)
+	if isCallback {
+		userID = msg.Chat.ID
+	}
 
 	return &TelegramMeta{
 		Message: msg,

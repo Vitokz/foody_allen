@@ -9,11 +9,13 @@ import (
 )
 
 const (
-	CommandStart        = "/start"
-	CommandGenerateDiet = "/generate_diet"
-	CommandMainMenu     = "/main_menu"
-	CommandSeeDiet      = "/see_diet"
-	CommandSeeDietDay   = "/see_diet_day_"
+	CommandStart           = "/start"
+	CommandMenu            = "/menu"
+	CommandGenerateDiet    = "/generate_diet"
+	CommandSeeDiet         = "/see_diet"
+	CommandSeeDietDay      = "/see_diet_day_"
+	CommandSeeDietProducts = "/see_diet_products"
+	CommandFillConfig      = "/fill_config"
 )
 
 const (
