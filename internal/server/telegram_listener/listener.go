@@ -171,7 +171,7 @@ func (l *Listener) Stop() {
 	close(l.exitChan)
 }
 
-func (l *Listener) deleteMessage(messageID int, update *tgbotapi.Update) {
+func (l *Listener) deleteMessage(_ int, update *tgbotapi.Update) {
 	deleteMsg := tgbotapi.NewDeleteMessage(update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.Message.MessageID)
 	_, err := l.bot.Send(deleteMsg)
 	if err != nil {
