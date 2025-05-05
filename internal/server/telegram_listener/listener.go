@@ -7,6 +7,7 @@ import (
 	"go.uber.org/zap"
 
 	"diet_bot/internal/commands"
+	generatediet "diet_bot/internal/commands/generate-diet"
 	seediet "diet_bot/internal/commands/see-diet"
 	"diet_bot/internal/flow"
 )
@@ -119,6 +120,17 @@ func (l *Listener) Listen() error {
 					l.deleteMessage(update.CallbackQuery.Message.MessageID, &update)
 
 					msg := l.commands.GenerateDietHandler(context.Background(), &update)
+
+					l.bot.Send(msg)
+				case generatediet.CommandHasGenerateDietDays(data):
+					l.logger.Info("User pressed the generate diet days button")
+
+					l.deleteMessage(update.CallbackQuery.Message.MessageID, &update)
+
+					msg := l.commands.GenerateDietDaysHandler(
+						context.Background(),
+						&update,
+					)
 
 					l.bot.Send(msg)
 				case data == flow.CommandFillConfig:

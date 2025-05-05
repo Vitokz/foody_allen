@@ -151,6 +151,15 @@ func (c *Client) CreateDiet(diet *entity.GeneratedDiet) error {
 	return err
 }
 
+func (c *Client) DeleteDiet(userID int64) error {
+	diet := &entity.GeneratedDiet{}
+	collection := c.db.Collection(diet.CollectionName())
+
+	_, err := collection.DeleteOne(context.TODO(), bson.M{"user_id": userID})
+
+	return err
+}
+
 func (c *Client) GetDiet(userID int64) (*entity.GeneratedDiet, error) {
 	diet := &entity.GeneratedDiet{}
 

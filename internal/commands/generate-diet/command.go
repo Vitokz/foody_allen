@@ -3,8 +3,11 @@ package generatediet
 import (
 	"context"
 	"encoding/json"
+	"strconv"
+	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 
 	"diet_bot/internal/entity"
@@ -18,6 +21,7 @@ type AIClient interface {
 type Repository interface {
 	GetDietConfiguration(userID int64) (*entity.DietConfiguration, error)
 	CreateDiet(diet *entity.GeneratedDiet) error
+	DeleteDiet(userID int64) error
 }
 
 type Command struct {
@@ -37,13 +41,61 @@ func NewCommand(repository Repository, aiClient AIClient, logger *zap.SugaredLog
 func (c *Command) GenerateDietHandler(ctx context.Context, update *tgbotapi.Update) tgbotapi.Chattable {
 	meta := entity.NewMeta(update)
 
-	configuration, err := c.repository.GetDietConfiguration(meta.UserID)
+	msg := tgbotapi.NewMessage(meta.ChatID, "Выбери количество дней для рациона:")
+	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("1 день", generateDietDayCommand("1")),
+			tgbotapi.NewInlineKeyboardButtonData("3 дня", generateDietDayCommand("3")),
+			tgbotapi.NewInlineKeyboardButtonData("5 дней", generateDietDayCommand("5")),
+			tgbotapi.NewInlineKeyboardButtonData("7 дней", generateDietDayCommand("7")),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("🔙 Назад в меню", flow.CommandMenu),
+		),
+	)
+
+	return msg
+}
+
+func generateDietDayCommand(dayNumber string) string {
+	return flow.CommandGenerateDietDays + dayNumber
+}
+
+func generateDietDayFromCommand(command string) (int, error) {
+	parts := strings.Split(command, "_")
+
+	dayNumber, err := strconv.Atoi(parts[len(parts)-1])
 	if err != nil {
-		c.logger.Error("error getting diet configuration", zap.Error(err))
+		return 0, err
+	}
+
+	return dayNumber, nil
+}
+
+func CommandHasGenerateDietDays(command string) bool {
+	return strings.HasPrefix(command, flow.CommandGenerateDietDays)
+}
+
+func (c *Command) GenerateDietDaysHandler(ctx context.Context, update *tgbotapi.Update) tgbotapi.Chattable {
+	meta := entity.NewMeta(update)
+
+	daysCount, err := generateDietDayFromCommand(update.CallbackQuery.Data)
+	if err != nil {
+		c.logger.Error("error getting diet days count", zap.Error(err))
 		return nil
 	}
 
-	prompt := GenerateDietPrompt(configuration)
+	configuration, err := c.repository.GetDietConfiguration(meta.UserID)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			configuration = entity.DefaultDietConfiguration()
+		} else {
+			c.logger.Error("error getting diet configuration", zap.Error(err))
+			return nil
+		}
+	}
+
+	prompt := GenerateDietPrompt(configuration, daysCount)
 
 	c.logger.Info("generated diet prompt", zap.String("prompt", prompt))
 
@@ -64,6 +116,12 @@ func (c *Command) GenerateDietHandler(ctx context.Context, update *tgbotapi.Upda
 
 	diet.SetIDs()
 	diet.UserID = meta.UserID
+
+	err = c.repository.DeleteDiet(meta.UserID)
+	if err != nil {
+		c.logger.Error("error deleting diet", zap.Error(err))
+		return nil
+	}
 
 	err = c.repository.CreateDiet(diet)
 	if err != nil {

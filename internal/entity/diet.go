@@ -44,11 +44,20 @@ type Meal struct {
 	Dishes   []Dish `json:"dishes" bson:"dishes" jsonschema_description:"Что входит в прием пищи"`
 }
 
+type DishWeightType string
+
+const (
+	DishWeightTypeDry    DishWeightType = "сухой"
+	DishWeightTypeCooked DishWeightType = "приготовленный"
+)
+
 type Dish struct {
-	Name     string `json:"name" bson:"name" jsonschema_description:"Название продукта"`
-	Calories int    `json:"calories" bson:"calories" jsonschema_description:"Количество калорий в продукте"`
-	PFC      PFC    `json:"pfc" bson:"pfc" jsonschema_description:"Количество белков, жиров и углеводов в продукте"`
-	Weight   int    `json:"weight" bson:"weight" jsonschema_description:"Количество грамм в продукте"`
+	Name        string         `json:"name" bson:"name" jsonschema_description:"Название продукта"`
+	Calories    int            `json:"calories" bson:"calories" jsonschema_description:"Количество калорий в продукте"`
+	PFC         PFC            `json:"pfc" bson:"pfc" jsonschema_description:"Количество белков, жиров и углеводов в продукте"`
+	Weight      int            `json:"weight" bson:"weight" jsonschema_description:"Количество грамм в продукте"`
+	WeightUnits string         `json:"weight_units" bson:"weight_units" jsonschema_description:"Единицы измерения веса в продукте"`
+	WeightType  DishWeightType `json:"weight_type" bson:"weight_type" jsonschema_description:"Тип веса в продукте" jsonschema:"enum=сухой,enum=приготовленный"`
 }
 
 type ProductToBuyType string
@@ -83,14 +92,20 @@ func (d *DailyDiet) ToMessage() string {
 	message += fmt.Sprintf("🍚 *Углеводы:* %.1f г\n\n", d.TotalPFC.Carbs)
 
 	for i, meal := range d.Meals {
-		message += fmt.Sprintf("*%s (%s)* - %d ккал\n", meal.Name, meal.Time, meal.Calories)
-		message += fmt.Sprintf("Б: %.1fг, Ж: %.1fг, У: %.1fг\n\n",
+		timeEmoji := timeToNumberEmoji(meal.Time)
+		message += fmt.Sprintf("*%s %s - %d ккал\n", meal.Name, timeEmoji, meal.Calories)
+		message += fmt.Sprintf("🥩 %.1fг, 🧈 %.1fг, 🍚 %.1fг\n\n",
 			meal.PFC.Proteins, meal.PFC.Fats, meal.PFC.Carbs)
 
 		message += "*Продукты:*\n"
-		for j, dish := range meal.Dishes {
-			message += fmt.Sprintf("%d. %s - %dг (%d ккал)\n",
-				j+1, dish.Name, dish.Weight, dish.Calories)
+		for _, dish := range meal.Dishes {
+			weightTypeInfo := ""
+			if dish.WeightType == DishWeightTypeDry {
+				weightTypeInfo = " (сухой)"
+			}
+
+			message += fmt.Sprintf("🍲 %s - %d %s%s (%d ккал)\n",
+				dish.Name, dish.Weight, dish.WeightUnits, weightTypeInfo, dish.Calories)
 		}
 
 		if i < len(d.Meals)-1 {
@@ -99,4 +114,31 @@ func (d *DailyDiet) ToMessage() string {
 	}
 
 	return message
+}
+
+func timeToNumberEmoji(timeStr string) string {
+	emojiMap := map[rune]string{
+		'0': "0️⃣",
+		'1': "1️⃣",
+		'2': "2️⃣",
+		'3': "3️⃣",
+		'4': "4️⃣",
+		'5': "5️⃣",
+		'6': "6️⃣",
+		'7': "7️⃣",
+		'8': "8️⃣",
+		'9': "9️⃣",
+		':': ":",
+	}
+
+	result := ""
+	for _, char := range timeStr {
+		if emoji, exists := emojiMap[char]; exists {
+			result += emoji
+		} else {
+			result += string(char)
+		}
+	}
+
+	return result
 }

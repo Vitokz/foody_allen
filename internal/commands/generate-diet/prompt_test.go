@@ -41,6 +41,6 @@ func TestGenerateDietPrompt(t *testing.T) {
 		},
 	}
 
-	prompt := GenerateDietPrompt(configuration)
+	prompt := GenerateDietPrompt(configuration, 3)
 	fmt.Println(prompt)
 }
