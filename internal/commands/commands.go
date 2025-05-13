@@ -5,6 +5,7 @@ import (
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 
 	filldiet "diet_bot/internal/commands/fill-diet"
@@ -34,22 +35,30 @@ func NewCommands(repository Repository, aiClient generatediet.AIClient, logger *
 
 const (
 	StartCommand = `
-Привет! Меня зовут FoodyAlen. Я личный помошник в составлении рациона.
+👋 Привет! Я FoodyAlen - твой AI-помощник по питанию
 
-Вот какие проблемы я могу решить:
-1. Составить рацион на день с учетом БЖУ и Калорий. 
-2. Составить рацион на неделю, чтобы в воскресенье все приготовить, упаковать, а потом съесть.
+Я помогу тебе:
+• Составить сбалансированный рацион на день
+• Планировать питание на неделю
+• Следить за БЖУ и калориями
 
-Чтобы помочь тебе в формировании рациона, мне нужно узнать тебя поближе 👉👈.
-
-Давай заполним конфигурацию рациона, это не займет больше 5 минут.
+У тебя уже есть базовая конфигурация рациона, можешь сразу попробовать сформировать рацион! 
 `
 )
 
 func (c *Commands) StartHandler(ctx context.Context, update *tgbotapi.Update) tgbotapi.Chattable {
 	meta := entity.NewMeta(update)
 
-	user := entity.User{
+	user, err := c.repository.GetUser(meta.Message.From.ID)
+	if err != nil && err != mongo.ErrNoDocuments {
+		c.logger.Errorw("Error getting user", "error", err)
+	}
+
+	if user != nil {
+		return c.MenuHandler(ctx, update)
+	}
+
+	user = &entity.User{
 		ID:           meta.Message.From.ID,
 		Username:     meta.Message.From.UserName,
 		FirstName:    meta.Message.From.FirstName,
@@ -60,28 +69,42 @@ func (c *Commands) StartHandler(ctx context.Context, update *tgbotapi.Update) tg
 		UpdatedAt:    time.Now(),
 	}
 
-	chat := entity.Chat{
+	chat := &entity.Chat{
 		ID:     meta.ChatID,
 		State:  flow.StateStart,
 		UserID: user.ID,
 	}
 
-	err := c.repository.UpsertUser(&user)
+	defaultDietConfiguration := entity.DefaultDietConfiguration()
+	defaultDietConfiguration.UserID = user.ID
+
+	err = c.repository.UpsertUser(user)
 	if err != nil {
 		c.logger.Errorw("Error saving user", "error", err)
 		return tgbotapi.NewMessage(meta.ChatID, "Произошла ошибка нажмите /start еще раз")
 	}
 
-	err = c.repository.UpsertChat(&chat)
+	err = c.repository.UpsertChat(chat)
 	if err != nil {
 		c.logger.Errorw("Error saving chat", "error", err)
 		return tgbotapi.NewMessage(meta.ChatID, "Произошла ошибка нажмите /start еще раз")
 	}
 
-	button := tgbotapi.NewInlineKeyboardButtonData("Заполнить конфигурацию", flow.CommandFillConfig)
-	keyboard := tgbotapi.NewInlineKeyboardMarkup(tgbotapi.NewInlineKeyboardRow(button))
+	err = c.repository.UpsertDietConfiguration(defaultDietConfiguration)
+	if err != nil {
+		c.logger.Errorw("Error saving diet configuration", "error", err)
+		return tgbotapi.NewMessage(meta.ChatID, "Произошла ошибка нажмите /start еще раз")
+	}
+
 	msg := tgbotapi.NewMessage(meta.ChatID, StartCommand)
-	msg.ReplyMarkup = keyboard
+	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("🥗 Создать рацион", flow.CommandGenerateDiet),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("🏠  В меню", flow.CommandMenu),
+		),
+	)
 
 	return msg
 }
