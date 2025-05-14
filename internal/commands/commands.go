@@ -54,7 +54,7 @@ func (c *Commands) StartHandler(ctx context.Context, update *tgbotapi.Update) tg
 		c.logger.Errorw("Error getting user", "error", err)
 	}
 
-	if user != nil {
+	if err == nil && user != nil {
 		return c.MenuHandler(ctx, update)
 	}
 
