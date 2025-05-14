@@ -43,4 +43,5 @@ func TestGenerateDietPrompt(t *testing.T) {
 
 	prompt := GenerateDietPrompt(configuration, 3)
 	fmt.Println(prompt)
+	t.Fail()
 }

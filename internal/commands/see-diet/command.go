@@ -8,13 +8,14 @@ import (
 	"strconv"
 	"strings"
 
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 type Repository interface {
-	GetDiet(chatID int64) (*entity.GeneratedDiet, error)
+	GetLatestDiet(userID int64) (*entity.GeneratedDiet, error)
 }
 
 type DietCommand struct {
@@ -32,10 +33,19 @@ func NewDietCommand(repository Repository, logger *zap.SugaredLogger) *DietComma
 func (c *DietCommand) SeeDietHandler(ctx context.Context, update *tgbotapi.Update) tgbotapi.Chattable {
 	meta := entity.NewMeta(update)
 
-	diet, err := c.repository.GetDiet(meta.ChatID)
+	diet, err := c.repository.GetLatestDiet(meta.UserID)
 	if err != nil {
-		c.logger.Error("error getting diet", zap.Error(err))
-		return nil
+		msg := tgbotapi.NewMessage(meta.ChatID, "Рацион еще не сформирован")
+		msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData("🥗 Создать рацион", flow.CommandGenerateDiet),
+			),
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData("🔙 Назад в меню", flow.CommandMenu),
+			),
+		)
+
+		return msg
 	}
 
 	msg := tgbotapi.NewMessage(meta.ChatID, "🥗 Выберите день рациона:")
@@ -65,7 +75,7 @@ func (c *DietCommand) SeeDietDayHandler(ctx context.Context, update *tgbotapi.Up
 		return nil
 	}
 
-	diet, err := c.repository.GetDiet(meta.ChatID) // Здесь я использую chatID, потому что в этом месте я получаю callbackQuery, а не message и юзер в данном случае это бот
+	diet, err := c.repository.GetLatestDiet(meta.UserID) // Здесь я использую chatID, потому что в этом месте я получаю callbackQuery, а не message и юзер в данном случае это бот
 	if err != nil {
 		c.logger.Error("error getting diet", zap.Error(err))
 		return nil
@@ -90,10 +100,24 @@ func (c *DietCommand) SeeDietDayHandler(ctx context.Context, update *tgbotapi.Up
 func (c *DietCommand) SeeDietProductsHandler(ctx context.Context, update *tgbotapi.Update) tgbotapi.Chattable {
 	meta := entity.NewMeta(update)
 
-	diet, err := c.repository.GetDiet(meta.ChatID)
-	if err != nil {
+	diet, err := c.repository.GetLatestDiet(meta.UserID)
+	if err != nil && err != mongo.ErrNoDocuments {
 		c.logger.Error("error getting diet", zap.Error(err))
 		return nil
+	}
+
+	if err == mongo.ErrNoDocuments {
+		msg := tgbotapi.NewMessage(meta.ChatID, "Рацион еще не сформирован")
+		msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData("🥗 Создать рацион", flow.CommandGenerateDiet),
+			),
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData("🔙 Назад в меню", flow.CommandMenu),
+			),
+		)
+
+		return msg
 	}
 
 	// Создаем карту для группировки продуктов по категориям

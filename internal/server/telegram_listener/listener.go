@@ -127,10 +127,20 @@ func (l *Listener) Listen() error {
 
 					l.deleteMessage(update.CallbackQuery.Message.MessageID, &update)
 
+					waitText := "Щас как наколдуем тебе красоту... ✨"
+					waitMsg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, waitText)
+
+					sentMsg, err := l.bot.Send(waitMsg)
+					if err != nil {
+						l.logger.Error("Failed to send wait message", zap.Error(err))
+					}
+
 					msg := l.commands.GenerateDietDaysHandler(
 						context.Background(),
 						&update,
 					)
+
+					l.deleteMessageByMsgID(&sentMsg)
 
 					l.bot.Send(msg)
 				case data == flow.CommandFillConfig:
@@ -173,6 +183,14 @@ func (l *Listener) Stop() {
 
 func (l *Listener) deleteMessage(_ int, update *tgbotapi.Update) {
 	deleteMsg := tgbotapi.NewDeleteMessage(update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.Message.MessageID)
+	_, err := l.bot.Send(deleteMsg)
+	if err != nil {
+		l.logger.Error("Failed to delete message", zap.Error(err))
+	}
+}
+
+func (l *Listener) deleteMessageByMsgID(msg *tgbotapi.Message) {
+	deleteMsg := tgbotapi.NewDeleteMessage(msg.Chat.ID, msg.MessageID)
 	_, err := l.bot.Send(deleteMsg)
 	if err != nil {
 		l.logger.Error("Failed to delete message", zap.Error(err))

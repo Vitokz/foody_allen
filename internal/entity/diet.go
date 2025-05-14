@@ -3,6 +3,7 @@ package entity
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -13,6 +14,7 @@ type GeneratedDiet struct {
 	ConfigID      uuid.UUID      `json:"config_id" bson:"config_id" jsonschema:"type=string" jsonschema_description:"UUID Заполнять не нужно"`
 	DailyDiet     []DailyDiet    `json:"daily_diet" bson:"daily_diet" jsonschema_description:"Ежедневный рацион"`
 	ProductsToBuy []ProductToBuy `json:"products_to_buy" bson:"products_to_buy" jsonschema_description:"Продуктовая корзина"`
+	CreatedAt     time.Time      `json:"created_at" bson:"created_at" jsonschema:"-"`
 }
 
 func (d *GeneratedDiet) CollectionName() string {

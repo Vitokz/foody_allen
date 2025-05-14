@@ -169,3 +169,18 @@ func (c *Client) GetDiet(userID int64) (*entity.GeneratedDiet, error) {
 
 	return diet, err
 }
+
+func (c *Client) GetLatestDiet(userID int64) (*entity.GeneratedDiet, error) {
+	diet := &entity.GeneratedDiet{}
+	collection := c.db.Collection(diet.CollectionName())
+
+	opts := options.FindOne().SetSort(bson.D{{"created_at", -1}})
+
+	err := collection.FindOne(
+		context.TODO(),
+		bson.M{"user_id": userID},
+		opts,
+	).Decode(diet)
+
+	return diet, err
+}

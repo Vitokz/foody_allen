@@ -15,4 +15,5 @@ type Repository interface {
 	CreateDiet(diet *entity.GeneratedDiet) error
 	GetDiet(userID int64) (*entity.GeneratedDiet, error)
 	DeleteDiet(userID int64) error
+	GetLatestDiet(userID int64) (*entity.GeneratedDiet, error) 
 }

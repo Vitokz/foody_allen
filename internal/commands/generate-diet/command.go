@@ -117,12 +117,6 @@ func (c *Command) GenerateDietDaysHandler(ctx context.Context, update *tgbotapi.
 	diet.SetIDs()
 	diet.UserID = meta.UserID
 
-	err = c.repository.DeleteDiet(meta.UserID)
-	if err != nil {
-		c.logger.Error("error deleting diet", zap.Error(err))
-		return nil
-	}
-
 	err = c.repository.CreateDiet(diet)
 	if err != nil {
 		c.logger.Error("error creating diet", zap.Error(err))
