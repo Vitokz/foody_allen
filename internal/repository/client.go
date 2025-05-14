@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -81,7 +80,7 @@ func (c *Client) UpsertUser(user *entity.User) error {
 }
 
 func (c *Client) GetUser(id int64) (*entity.User, error) {
-	var user *entity.User
+	user := &entity.User{}
 
 	collection := c.db.Collection(user.CollectionName())
 
@@ -119,10 +118,6 @@ func (c *Client) GetChat(id int64) (*entity.Chat, error) {
 
 func (c *Client) UpsertDietConfiguration(dietConfiguration *entity.DietConfiguration) error {
 	collection := c.db.Collection(dietConfiguration.CollectionName())
-
-	if dietConfiguration.ID == uuid.Nil {
-		dietConfiguration.ID = uuid.New()
-	}
 
 	filter := bson.M{"user_id": dietConfiguration.UserID}
 	update := bson.M{"$set": dietConfiguration}
