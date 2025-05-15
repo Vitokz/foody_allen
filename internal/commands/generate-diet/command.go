@@ -16,7 +16,7 @@ import (
 )
 
 type AIClient interface {
-	GenerateDiet(prompt string) (string, error)
+	GenerateDiet(systemPrompt string, prompt string) (string, error)
 }
 
 type Repository interface {
@@ -100,7 +100,7 @@ func (c *Command) GenerateDietDaysHandler(ctx context.Context, update *tgbotapi.
 
 	c.logger.Info("generated diet prompt", zap.String("prompt", prompt))
 
-	response, err := c.aiClient.GenerateDiet(prompt)
+	response, err := c.aiClient.GenerateDiet(systemPrompt, prompt)
 	if err != nil {
 		c.logger.Error("error generating diet", zap.Error(err))
 		return nil

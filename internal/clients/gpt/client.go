@@ -21,15 +21,23 @@ func NewClient(apiKey string, baseURL string) *Client {
 	}
 }
 
-func (c *Client) GenerateDiet(prompt string) (string, error) {
+func (c *Client) GenerateDiet(systemPrompt string, prompt string) (string, error) {
 	response, err := c.client.CreateChatCompletion(context.Background(), openai.ChatCompletionRequest{
 		Model: openai.GPT4o,
 		Messages: []openai.ChatCompletionMessage{
+			{
+				Role:    openai.ChatMessageRoleSystem,
+				Content: systemPrompt,
+			},
 			{
 				Role:    openai.ChatMessageRoleUser,
 				Content: prompt,
 			},
 		},
+		ResponseFormat: &openai.ChatCompletionResponseFormat{
+			Type: openai.ChatCompletionResponseFormatTypeJSONObject,
+		},
+		Temperature: 0.0,
 	})
 
 	if err != nil {
