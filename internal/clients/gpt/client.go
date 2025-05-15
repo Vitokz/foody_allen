@@ -23,7 +23,7 @@ func NewClient(apiKey string, baseURL string) *Client {
 
 func (c *Client) GenerateDiet(prompt string) (string, error) {
 	response, err := c.client.CreateChatCompletion(context.Background(), openai.ChatCompletionRequest{
-		Model: openai.GPT4oMini,
+		Model: openai.GPT4o,
 		Messages: []openai.ChatCompletionMessage{
 			{
 				Role:    openai.ChatMessageRoleUser,

@@ -95,7 +95,7 @@ func (d *DailyDiet) ToMessage() string {
 
 	for i, meal := range d.Meals {
 		timeEmoji := timeToNumberEmoji(meal.Time)
-		message += fmt.Sprintf("*%s %s - %d ккал\n", meal.Name, timeEmoji, meal.Calories)
+		message += fmt.Sprintf("*%s %s - %d ккал*\n", meal.Name, timeEmoji, meal.Calories)
 		message += fmt.Sprintf("🥩 %.1fг, 🧈 %.1fг, 🍚 %.1fг\n\n",
 			meal.PFC.Proteins, meal.PFC.Fats, meal.PFC.Carbs)
 

@@ -75,14 +75,13 @@ func (c *DietCommand) SeeDietDayHandler(ctx context.Context, update *tgbotapi.Up
 		return nil
 	}
 
-	diet, err := c.repository.GetLatestDiet(meta.UserID) // Здесь я использую chatID, потому что в этом месте я получаю callbackQuery, а не message и юзер в данном случае это бот
+	diet, err := c.repository.GetLatestDiet(meta.UserID)
 	if err != nil {
 		c.logger.Error("error getting diet", zap.Error(err))
 		return nil
 	}
 
 	day := diet.DailyDiet[dayNumber-1]
-
 	msg := tgbotapi.NewMessage(meta.ChatID, day.ToMessage())
 	msg.ParseMode = tgbotapi.ModeMarkdown
 

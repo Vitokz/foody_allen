@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"strconv"
 	"strings"
+	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -116,6 +117,7 @@ func (c *Command) GenerateDietDaysHandler(ctx context.Context, update *tgbotapi.
 
 	diet.SetIDs()
 	diet.UserID = meta.UserID
+	diet.CreatedAt = time.Now()
 
 	err = c.repository.CreateDiet(diet)
 	if err != nil {
