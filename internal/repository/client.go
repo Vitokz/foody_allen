@@ -131,28 +131,6 @@ func (c *Client) GetChat(id int64) (*entity.Chat, error) {
 	return chat, err
 }
 
-func (c *Client) UpsertDietConfiguration(dietConfiguration *entity.DietConfiguration) error {
-	collection := c.db.Collection(dietConfiguration.CollectionName())
-
-	filter := bson.M{"user_id": dietConfiguration.UserID}
-	update := bson.M{"$set": dietConfiguration}
-	opts := options.Update().SetUpsert(true)
-
-	_, err := collection.UpdateOne(context.TODO(), filter, update, opts)
-
-	return err
-}
-
-func (c *Client) GetDietConfiguration(userID int64) (*entity.DietConfiguration, error) {
-	dietConfiguration := &entity.DietConfiguration{}
-
-	collection := c.db.Collection(dietConfiguration.CollectionName())
-
-	err := collection.FindOne(context.TODO(), bson.M{"user_id": userID}).Decode(dietConfiguration)
-
-	return dietConfiguration, err
-}
-
 func (c *Client) CreateDiet(diet *entity.GeneratedDiet) error {
 	collection := c.db.Collection(diet.CollectionName())
 

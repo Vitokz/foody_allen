@@ -8,7 +8,6 @@ import (
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 
 	"diet_bot/internal/entity"
@@ -75,27 +74,13 @@ func CommandHasGenerateDietDays(command string) bool {
 func (c *Command) GenerateDietDaysHandler(ctx context.Context, update *tgbotapi.Update) tgbotapi.Chattable {
 	meta := entity.NewMeta(update)
 
-	daysCount, err := generateDietDayFromCommand(update.CallbackQuery.Data)
+	_, err := generateDietDayFromCommand(update.CallbackQuery.Data)
 	if err != nil {
 		c.logger.Error("error getting diet days count", zap.Error(err))
 		return nil
 	}
 
-	configuration, err := c.repository.GetDietConfiguration(meta.UserID)
-	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			configuration = entity.DefaultDietConfiguration()
-		} else {
-			c.logger.Error("error getting diet configuration", zap.Error(err))
-			return nil
-		}
-	}
-
-	prompt := GenerateDietPrompt(configuration, daysCount)
-
-	c.logger.Info("generated diet prompt", zap.String("prompt", prompt))
-
-	response, err := c.aiClient.GenerateDiet(systemPrompt, prompt)
+	response, err := c.aiClient.GenerateDiet("", "")
 	if err != nil {
 		c.logger.Error("error generating diet", zap.Error(err))
 		return nil

@@ -101,8 +101,6 @@ func NewBotFSM(chat *entity.Chat) *BotFSM {
 			Dst:  StateMenu,
 		},
 	}
-	events = append(events, CreateDietFlow()...)
-	events = append(events, CreateFoodConfigurationFlow()...)
 	events = append(events, CreateUserConfigurationFlow()...)
 
 	return &BotFSM{

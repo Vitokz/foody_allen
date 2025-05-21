@@ -86,6 +86,12 @@ type ProductToBuy struct {
 	Type   string `json:"type" bson:"type" jsonschema_description:"Тип продукта" jsonschema:"enum=Овощи и фрукты,enum=Молочка,enum=Мясо и рыба,enum=Крупы,enum=Дополнительно"`
 }
 
+type PFC struct {
+	Proteins float64 `json:"proteins" bson:"proteins" jsonschema_description:"Количество белков"`
+	Fats     float64 `json:"fats" bson:"fats" jsonschema_description:"Количество жиров"`
+	Carbs    float64 `json:"carbs" bson:"carbs" jsonschema_description:"Количество углеводов"`
+}
+
 func (d *DailyDiet) ToMessage() string {
 	message := "🍽️ *Ваш рацион на день* 🍽️\n\n"
 	message += fmt.Sprintf("🔥 *Общая калорийность:* %d ккал\n", d.TotalCalories)
