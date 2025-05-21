@@ -1,15 +1,14 @@
 package telegramlistener
 
 import (
-	"context"
+	"errors"
+	"runtime/debug"
+	"sync"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"go.uber.org/zap"
 
 	"diet_bot/internal/commands"
-	generatediet "diet_bot/internal/commands/generate-diet"
-	seediet "diet_bot/internal/commands/see-diet"
-	"diet_bot/internal/flow"
 )
 
 type Listener struct {
@@ -49,150 +48,83 @@ func (l *Listener) Listen() error {
 
 	updates := l.bot.GetUpdatesChan(u)
 
+	var wg sync.WaitGroup
+
+	// Ограничиваем количество одновременных обработчиков
+	semaphore := make(chan struct{}, 10) // максимум 10 одновременных обработок
+
 	for {
 		select {
 		case <-l.exitChan:
+			// Дожидаемся завершения всех горутин перед выходом
+			wg.Wait()
 			return nil
 		case update := <-updates:
-			if update.Message != nil {
-				switch update.Message.Text {
-				case flow.CommandStart:
-					l.logger.Info("User started the bot")
+			// Добавляем в WaitGroup новую задачу
+			wg.Add(1)
 
-					msg := l.commands.StartHandler(context.Background(), &update)
+			// Блокируем семафор
+			semaphore <- struct{}{}
 
-					l.bot.Send(msg)
-				case flow.CommandMenu:
-					l.logger.Info("User pressed the menu button")
+			// Обрабатываем каждое сообщение асинхронно
+			go func(update tgbotapi.Update) {
+				defer wg.Done()
+				defer func() { <-semaphore }() // освобождаем семафор в любом случае
 
-					msg := l.commands.MenuHandler(context.Background(), &update)
+				// Обрабатываем паники
+				defer func() {
+					if r := recover(); r != nil {
+						l.logger.Error("Panic in message handler",
+							zap.Any("recover", r),
+							zap.String("stack", string(debug.Stack())))
 
-					l.bot.Send(msg)
-				case flow.CommandGenerateDiet:
-					l.logger.Info("User pressed the generate diet button")
+						l.errorHandler(errors.New("panic at during message handler"), update.Message.Chat.ID)
+					}
+				}()
 
-					msg := l.commands.GenerateDietHandler(context.Background(), &update)
+				if update.Message != nil {
+					msg, err := l.handleCommands(&update)
+					if err != nil {
+						l.logger.Error("Failed to handle command", zap.Error(err))
+						l.errorHandler(err, update.Message.Chat.ID)
 
-					l.bot.Send(msg)
-				default:
-					if l.commands.IsFillDiet(context.Background(), &update) {
-						msg := l.commands.FillDiet(context.Background(), &update)
+						return
+					}
 
-						l.bot.Send(msg)
+					if msg == nil {
+						return
+					}
 
-					} else if l.commands.IsFillProducts(context.Background(), &update) {
-						msg := l.commands.FillDiet(context.Background(), &update)
+					_, err = l.bot.Send(msg)
+					if err != nil {
+						l.logger.Error("Failed to send message", zap.Error(err))
+					}
+				} else if update.CallbackQuery != nil {
+					msg, err := l.handleCallback(&update)
+					if err != nil {
+						l.logger.Error("Failed to handle callback", zap.Error(err))
+						l.errorHandler(err, update.CallbackQuery.Message.Chat.ID)
 
-						l.bot.Send(msg)
+						return
+					}
+
+					if msg == nil {
+						return
+					}
+
+					_, err = l.bot.Send(msg)
+					if err != nil {
+						l.logger.Error("Failed to send message", zap.Error(err))
+						l.errorHandler(err, update.Message.Chat.ID)
+
+						return
 					}
 				}
-			} else if update.CallbackQuery != nil {
-				callback := tgbotapi.NewCallback(update.CallbackQuery.ID, "")
-				l.bot.Request(callback)
-
-				data := update.CallbackQuery.Data
-
-				switch {
-				case data == flow.CommandMenu:
-					l.logger.Info("User pressed the menu button")
-
-					// 1. Удаляем сообщение, в котором была нажата кнопка
-					deleteMsg := tgbotapi.NewDeleteMessage(update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.Message.MessageID)
-					_, err := l.bot.Send(deleteMsg)
-					if err != nil {
-						l.logger.Error("Failed to delete message", zap.Error(err))
-					}
-
-					// 2. Отправляем новое сообщение
-					msg := l.commands.MenuHandler(context.Background(), &update)
-					l.bot.Send(msg)
-				case data == flow.CommandSeeDietProducts:
-					l.logger.Info("User pressed the see diet products button")
-
-					l.deleteMessage(update.CallbackQuery.Message.MessageID, &update)
-
-					msg := l.commands.SeeDietProductsHandler(context.Background(), &update)
-
-					l.bot.Send(msg)
-				case data == flow.CommandGenerateDiet:
-					l.logger.Info("User pressed the generate diet button")
-
-					l.deleteMessage(update.CallbackQuery.Message.MessageID, &update)
-
-					msg := l.commands.GenerateDietHandler(context.Background(), &update)
-
-					l.bot.Send(msg)
-				case generatediet.CommandHasGenerateDietDays(data):
-					l.logger.Info("User pressed the generate diet days button")
-
-					l.deleteMessage(update.CallbackQuery.Message.MessageID, &update)
-
-					waitText := "Щас как наколдуем тебе красоту... ✨"
-					waitMsg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, waitText)
-
-					sentMsg, err := l.bot.Send(waitMsg)
-					if err != nil {
-						l.logger.Error("Failed to send wait message", zap.Error(err))
-					}
-
-					msg := l.commands.GenerateDietDaysHandler(
-						context.Background(),
-						&update,
-					)
-
-					l.deleteMessageByMsgID(&sentMsg)
-
-					l.bot.Send(msg)
-				case data == flow.CommandFillConfig:
-					l.logger.Info("User pressed the fill config button")
-
-					l.deleteMessage(update.CallbackQuery.Message.MessageID, &update)
-
-					msg := l.commands.CreateDietHandler(context.Background(), &update)
-
-					l.bot.Send(msg)
-				case data == flow.CommandSeeDiet:
-					l.logger.Info("User pressed the see diet button")
-
-					l.deleteMessage(update.CallbackQuery.Message.MessageID, &update)
-
-					msg := l.commands.SeeDietHandler(context.Background(), &update)
-
-					l.bot.Send(msg)
-				case seediet.CommandHasDietDay(data):
-					l.logger.Info("User pressed the see diet day button")
-
-					l.deleteMessage(update.CallbackQuery.Message.MessageID, &update)
-
-					msg := l.commands.SeeDietDayHandler(context.Background(), &update)
-
-					l.bot.Send(msg)
-				default:
-					l.logger.Infow("Unknown callback data received",
-						"data", update.CallbackQuery.Data,
-						"user_id", update.CallbackQuery.From.ID)
-				}
-			}
+			}(update)
 		}
 	}
 }
 
 func (l *Listener) Stop() {
 	close(l.exitChan)
-}
-
-func (l *Listener) deleteMessage(_ int, update *tgbotapi.Update) {
-	deleteMsg := tgbotapi.NewDeleteMessage(update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.Message.MessageID)
-	_, err := l.bot.Send(deleteMsg)
-	if err != nil {
-		l.logger.Error("Failed to delete message", zap.Error(err))
-	}
-}
-
-func (l *Listener) deleteMessageByMsgID(msg *tgbotapi.Message) {
-	deleteMsg := tgbotapi.NewDeleteMessage(msg.Chat.ID, msg.MessageID)
-	_, err := l.bot.Send(deleteMsg)
-	if err != nil {
-		l.logger.Error("Failed to delete message", zap.Error(err))
-	}
 }

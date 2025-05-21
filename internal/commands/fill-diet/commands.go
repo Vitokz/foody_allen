@@ -5,26 +5,19 @@ import (
 
 	"diet_bot/internal/entity"
 	"diet_bot/internal/flow"
+	"diet_bot/internal/repository"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 )
 
-type Repository interface {
-	GetChat(id int64) (*entity.Chat, error)
-	UpsertChat(chat *entity.Chat) error
-
-	GetDietConfiguration(userID int64) (*entity.DietConfiguration, error)
-	UpsertDietConfiguration(dietConfiguration *entity.DietConfiguration) error
-}
-
 type Commands struct {
-	repository Repository
+	repository *repository.Client
 	logger     *zap.SugaredLogger
 }
 
-func NewCommands(repository Repository, logger *zap.SugaredLogger) *Commands {
+func NewCommands(repository *repository.Client, logger *zap.SugaredLogger) *Commands {
 	return &Commands{
 		repository: repository,
 		logger:     logger,

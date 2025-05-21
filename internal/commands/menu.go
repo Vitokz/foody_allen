@@ -8,7 +8,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-func (c *Commands) MenuHandler(ctx context.Context, update *tgbotapi.Update) tgbotapi.Chattable {
+func (c *Commands) MenuHandler(ctx context.Context, update *tgbotapi.Update) (tgbotapi.Chattable, error) {
 	meta := entity.NewMeta(update)
 
 	messageText := "🍽️ *Главное меню* 🍽️\n\nВыберите действие из меню ниже:"
@@ -24,14 +24,30 @@ func (c *Commands) MenuHandler(ctx context.Context, update *tgbotapi.Update) tgb
 			tgbotapi.NewInlineKeyboardButtonData("🛒 Посмотреть продукты", flow.CommandSeeDietProducts),
 		),
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("⚙️ Заполнить конфигурацию", flow.CommandFillConfig),
+			tgbotapi.NewInlineKeyboardButtonData("⚙️ Заполнить конфигурацию", flow.CommandStartFillUserConfig),
 		),
 	)
 
-	// Создаем сообщение с клавиатурой
 	msg := tgbotapi.NewMessage(meta.ChatID, messageText)
 	msg.ParseMode = "Markdown"
 	msg.ReplyMarkup = keyboard
 
-	return msg
+	chat, err := c.repository.GetChat(meta.ChatID)
+	if err != nil {
+		c.logger.Errorw("error getting chat", "error", err)
+		return nil, err
+	}
+
+	botFSM := flow.NewBotFSM(chat)
+	if err := botFSM.Event(flow.EventMainMenu); err != nil {
+		c.logger.Errorw("error transitioning to main menu", "error", err)
+		return nil, err
+	}
+
+	if err := c.repository.UpsertChat(chat); err != nil {
+		c.logger.Errorw("error saving chat", "error", err)
+		return nil, err
+	}
+
+	return msg, nil
 }

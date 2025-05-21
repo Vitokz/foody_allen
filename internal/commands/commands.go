@@ -5,29 +5,36 @@ import (
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"go.mongodb.org/mongo-driver/mongo"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 
-	filldiet "diet_bot/internal/commands/fill-diet"
 	generatediet "diet_bot/internal/commands/generate-diet"
 	seediet "diet_bot/internal/commands/see-diet"
+	userconfig "diet_bot/internal/commands/user-config"
+
 	"diet_bot/internal/entity"
+	internalerrors "diet_bot/internal/entity/errors"
 	"diet_bot/internal/flow"
+	"diet_bot/internal/repository"
 )
 
 type Commands struct {
-	*filldiet.Commands
 	*generatediet.Command
 	*seediet.DietCommand
+	*userconfig.Commands
 	logger     *zap.SugaredLogger
-	repository Repository
+	repository *repository.Client
 }
 
-func NewCommands(repository Repository, aiClient generatediet.AIClient, logger *zap.SugaredLogger) *Commands {
+func NewCommands(
+	repository *repository.Client,
+	aiClient generatediet.AIClient,
+	logger *zap.SugaredLogger,
+) *Commands {
 	return &Commands{
-		Commands:    filldiet.NewCommands(repository, logger),
 		Command:     generatediet.NewCommand(repository, aiClient, logger),
 		DietCommand: seediet.NewDietCommand(repository, logger),
+		Commands:    userconfig.NewCommands(repository, logger),
 		repository:  repository,
 		logger:      logger,
 	}
@@ -42,18 +49,18 @@ const (
 • Планировать питание на неделю
 • Следить за БЖУ и калориями
 
-Я собираю рацион на основе твоих предпочтений и ограничений, которые лежат в твоей конфигурации.
-
-Базовая конфигурация рациона для тебя уже подготовлена, можешь сразу попробовать сформировать рацион! 
+Чтобы начать мне нужно будет немного узнать о тебе. Тыкай на кнопочку
 `
 )
 
-func (c *Commands) StartHandler(ctx context.Context, update *tgbotapi.Update) tgbotapi.Chattable {
+func (c *Commands) StartHandler(ctx context.Context, update *tgbotapi.Update) (tgbotapi.Chattable, error) {
 	meta := entity.NewMeta(update)
 
 	user, err := c.repository.GetUser(meta.Message.From.ID)
-	if err != nil && err != mongo.ErrNoDocuments {
+	if err != nil && err != internalerrors.ErrorUserNotFound {
 		c.logger.Errorw("Error getting user", "error", err)
+
+		return nil, err
 	}
 
 	if err == nil && user != nil {
@@ -77,36 +84,38 @@ func (c *Commands) StartHandler(ctx context.Context, update *tgbotapi.Update) tg
 		UserID: user.ID,
 	}
 
-	defaultDietConfiguration := entity.DefaultDietConfiguration()
-	defaultDietConfiguration.UserID = user.ID
+	userConfig := &entity.UserConfiguration{
+		ID:     uuid.New(),
+		UserID: user.ID,
+	}
 
 	err = c.repository.UpsertUser(user)
 	if err != nil {
 		c.logger.Errorw("Error saving user", "error", err)
-		return tgbotapi.NewMessage(meta.ChatID, "Произошла ошибка нажмите /start еще раз")
+
+		return nil, err
 	}
 
 	err = c.repository.UpsertChat(chat)
 	if err != nil {
 		c.logger.Errorw("Error saving chat", "error", err)
-		return tgbotapi.NewMessage(meta.ChatID, "Произошла ошибка нажмите /start еще раз")
+
+		return nil, err
 	}
 
-	err = c.repository.UpsertDietConfiguration(defaultDietConfiguration)
+	err = c.repository.CreateUserConfiguration(userConfig)
 	if err != nil {
-		c.logger.Errorw("Error saving diet configuration", "error", err)
-		return tgbotapi.NewMessage(meta.ChatID, "Произошла ошибка нажмите /start еще раз")
+		c.logger.Errorw("Error saving user configuration", "error", err)
+
+		return nil, err
 	}
 
 	msg := tgbotapi.NewMessage(meta.ChatID, StartCommand)
 	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("🥗 Создать рацион", flow.CommandGenerateDiet),
-		),
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("🏠  В меню", flow.CommandMenu),
+			tgbotapi.NewInlineKeyboardButtonData("⚙️ Заполнить информацию", flow.CommandStartFillUserConfig),
 		),
 	)
 
-	return msg
+	return msg, nil
 }

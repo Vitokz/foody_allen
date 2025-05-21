@@ -13,25 +13,20 @@ import (
 
 	"diet_bot/internal/entity"
 	"diet_bot/internal/flow"
+	"diet_bot/internal/repository"
 )
 
 type AIClient interface {
 	GenerateDiet(systemPrompt string, prompt string) (string, error)
 }
 
-type Repository interface {
-	GetDietConfiguration(userID int64) (*entity.DietConfiguration, error)
-	CreateDiet(diet *entity.GeneratedDiet) error
-	DeleteDiet(userID int64) error
-}
-
 type Command struct {
-	repository Repository
+	repository *repository.Client
 	aiClient   AIClient
 	logger     *zap.SugaredLogger
 }
 
-func NewCommand(repository Repository, aiClient AIClient, logger *zap.SugaredLogger) *Command {
+func NewCommand(repository *repository.Client, aiClient AIClient, logger *zap.SugaredLogger) *Command {
 	return &Command{
 		repository: repository,
 		aiClient:   aiClient,

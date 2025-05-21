@@ -4,6 +4,7 @@ import (
 	"context"
 	"diet_bot/internal/entity"
 	"diet_bot/internal/flow"
+	"diet_bot/internal/repository"
 	"fmt"
 	"strconv"
 	"strings"
@@ -14,16 +15,12 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-type Repository interface {
-	GetLatestDiet(userID int64) (*entity.GeneratedDiet, error)
-}
-
 type DietCommand struct {
 	logger     *zap.SugaredLogger
-	repository Repository
+	repository *repository.Client
 }
 
-func NewDietCommand(repository Repository, logger *zap.SugaredLogger) *DietCommand {
+func NewDietCommand(repository *repository.Client, logger *zap.SugaredLogger) *DietCommand {
 	return &DietCommand{
 		logger:     logger,
 		repository: repository,

@@ -5,18 +5,21 @@ import (
 )
 
 type TelegramMeta struct {
-	Message *tgbotapi.Message
-	Chat    *tgbotapi.Chat
-	ChatID  int64
-	UserID  int64
+	Message      *tgbotapi.Message
+	CallbackData *string
+	Chat         *tgbotapi.Chat
+	ChatID       int64
+	UserID       int64
 }
 
 func NewMeta(update *tgbotapi.Update) *TelegramMeta {
 	msg := update.Message
+	var callbackData *string
 
 	isCallback := false
 	if msg == nil {
 		msg = update.CallbackQuery.Message
+		callbackData = &update.CallbackQuery.Data
 		isCallback = true
 	}
 
@@ -27,9 +30,10 @@ func NewMeta(update *tgbotapi.Update) *TelegramMeta {
 	}
 
 	return &TelegramMeta{
-		Message: msg,
-		Chat:    msg.Chat,
-		ChatID:  chatID,
-		UserID:  userID,
+		Message:      msg,
+		CallbackData: callbackData,
+		Chat:         msg.Chat,
+		ChatID:       chatID,
+		UserID:       userID,
 	}
 }

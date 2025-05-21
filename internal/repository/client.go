@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"diet_bot/internal/entity"
+	internalerrors "diet_bot/internal/entity/errors"
 )
 
 const (
@@ -75,6 +77,9 @@ func (c *Client) UpsertUser(user *entity.User) error {
 	opts := options.Update().SetUpsert(true)
 
 	_, err := collection.UpdateOne(context.TODO(), filter, update, opts)
+	if err != nil {
+		return internalerrors.ErrorFailedToSaveUser
+	}
 
 	return err
 }
@@ -85,6 +90,13 @@ func (c *Client) GetUser(id int64) (*entity.User, error) {
 	collection := c.db.Collection(user.CollectionName())
 
 	err := collection.FindOne(context.TODO(), bson.M{"_id": id}).Decode(user)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, internalerrors.ErrorUserNotFound
+		}
+
+		return nil, internalerrors.ErrorFailedToGetUser
+	}
 
 	return user, err
 }
@@ -102,6 +114,9 @@ func (c *Client) UpsertChat(chat *entity.Chat) error {
 	opts := options.Update().SetUpsert(true)
 
 	_, err := collection.UpdateOne(context.TODO(), filter, update, opts)
+	if err != nil {
+		return internalerrors.ErrorFailedToSaveChat
+	}
 
 	return err
 }
@@ -178,4 +193,38 @@ func (c *Client) GetLatestDiet(userID int64) (*entity.GeneratedDiet, error) {
 	).Decode(diet)
 
 	return diet, err
+}
+
+func (c *Client) CreateUserConfiguration(userConfiguration *entity.UserConfiguration) error {
+	userConfiguration.CreatedAt = time.Now()
+	userConfiguration.UpdatedAt = time.Now()
+	collection := c.db.Collection(userConfiguration.CollectionName())
+
+	_, err := collection.InsertOne(context.TODO(), userConfiguration)
+
+	return err
+}
+
+func (c *Client) SaveUserConfiguration(userConfiguration *entity.UserConfiguration) error {
+	userConfiguration.UpdatedAt = time.Now()
+
+	collection := c.db.Collection(userConfiguration.CollectionName())
+
+	filter := bson.M{"user_id": userConfiguration.UserID}
+	update := bson.M{"$set": userConfiguration}
+	opts := options.Update().SetUpsert(true)
+
+	_, err := collection.UpdateOne(context.TODO(), filter, update, opts)
+
+	return err
+}
+
+func (c *Client) GetUserConfiguration(userID int64) (*entity.UserConfiguration, error) {
+	userConfiguration := &entity.UserConfiguration{}
+
+	collection := c.db.Collection(userConfiguration.CollectionName())
+
+	err := collection.FindOne(context.TODO(), bson.M{"user_id": userID}).Decode(userConfiguration)
+
+	return userConfiguration, err
 }

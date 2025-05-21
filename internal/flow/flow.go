@@ -9,14 +9,39 @@ import (
 )
 
 const (
-	CommandStart            = "/start"
-	CommandMenu             = "/menu"
-	CommandGenerateDiet     = "/generate_diet"
-	CommandGenerateDietDays = "/generate_diet_days_"
-	CommandSeeDiet          = "/see_diet"
-	CommandSeeDietDay       = "/see_diet_day_"
-	CommandSeeDietProducts  = "/see_diet_products"
-	CommandFillConfig       = "/fill_config"
+	CommandStart               = "/start"
+	CommandMenu                = "/menu"
+	CommandGenerateDiet        = "/generate_diet"
+	CommandGenerateDietDays    = "/generate_diet_days_"
+	CommandSeeDiet             = "/see_diet"
+	CommandSeeDietDay          = "/see_diet_day_"
+	CommandSeeDietProducts     = "/see_diet_products"
+	CommandFillConfig          = "/fill_config"
+	CommandStartFillUserConfig = "/start_fill_user_config"
+
+	CommandFillUserConfigGender       = "/fill_user_config_gender_"
+	CommandFillUserConfigGenderMale   = "/fill_user_config_gender_male"
+	CommandFillUserConfigGenderFemale = "/fill_user_config_gender_female"
+
+	CommandFillDietGoal               = "/fill_diet_goal_"
+	CommandFillDietGoalLoseWeight     = "/fill_diet_goal_lose_weight"
+	CommandFillDietGoalMaintainWeight = "/fill_diet_goal_maintain_weight"
+	CommandFillDietGoalGainWeight     = "/fill_diet_goal_gain_weight"
+
+	CommandFillUserConfigActivity          = "/fill_user_config_activity_"
+	CommandFillUserConfigActivitySedentary = "/fill_user_config_activity_sedentary"
+	CommandFillUserConfigActivityLow       = "/fill_user_config_activity_low"
+	CommandFillUserConfigActivityMedium    = "/fill_user_config_activity_medium"
+	CommandFillUserConfigActivityHigh      = "/fill_user_config_activity_high"
+	CommandFillUserConfigActivityVeryHigh  = "/fill_user_config_activity_very_high"
+
+	CommandFillUserConfigDietType              = "/fill_user_config_diet_type_"
+	CommandFillUserConfigDietTypeAnything      = "/fill_user_config_diet_type_anything"
+	CommandFillUserConfigDietTypeKeto          = "/fill_user_config_diet_type_keto"
+	CommandFillUserConfigDietTypePaleo         = "/fill_user_config_diet_type_paleo"
+	CommandFillUserConfigDietTypeVegan         = "/fill_user_config_diet_type_vegan"
+	CommandFillUserConfigDietTypeVegetarian    = "/fill_user_config_diet_type_vegetarian"
+	CommandFillUserConfigDietTypeMediterranean = "/fill_user_config_diet_type_mediterranean"
 )
 
 const (
@@ -29,7 +54,6 @@ const (
 )
 
 const (
-	StateCreateDiet                        = "create_diet"
 	StateCreateDiet_LifeStyle              = "create_diet_life_style"
 	StateCreateDiet_TimeRestrictions       = "create_diet_time_restrictions"
 	StateCreateDiet_PFC                    = "create_diet_pfc"
@@ -52,6 +76,18 @@ const (
 	StateCreateFoodConfiguration_Eggs             = "create_food_configuration_eggs"
 )
 
+const (
+	StateUserConfiguration_Height    = "user_configuration_height"
+	StateUserConfiguration_Weight    = "user_configuration_weight"
+	StateUserConfiguration_Gender    = "user_configuration_gender"
+	StateUserConfiguration_Age       = "user_configuration_age"
+	StateUserConfiguration_Goal      = "user_configuration_goal"
+	StateUserConfiguration_Activity  = "user_configuration_activity"
+	StateUserConfiguration_DietType  = "user_configuration_diet_type"
+	StateUserConfiguration_Allergies = "user_configuration_allergies"
+	StateUserConfiguration_MealTypes = "user_configuration_meal_types"
+)
+
 type BotFSM struct {
 	FSM  *fsm.FSM
 	Chat *entity.Chat
@@ -67,6 +103,7 @@ func NewBotFSM(chat *entity.Chat) *BotFSM {
 	}
 	events = append(events, CreateDietFlow()...)
 	events = append(events, CreateFoodConfigurationFlow()...)
+	events = append(events, CreateUserConfigurationFlow()...)
 
 	return &BotFSM{
 		FSM: fsm.NewFSM(
@@ -79,6 +116,13 @@ func NewBotFSM(chat *entity.Chat) *BotFSM {
 }
 
 func (b *BotFSM) Event(event string) error {
+	if event == EventMainMenu {
+		b.FSM.SetState(StateMenu)
+		b.Chat.State = StateMenu
+
+		return nil
+	}
+
 	if err := b.FSM.Event(context.Background(), event, b.Chat); err != nil {
 		return err
 	}
