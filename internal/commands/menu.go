@@ -24,7 +24,7 @@ func (c *Commands) MenuHandler(ctx context.Context, update *tgbotapi.Update) (tg
 			tgbotapi.NewInlineKeyboardButtonData("🛒 Посмотреть продукты", flow.CommandSeeDietProducts),
 		),
 		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("⚙️ Заполнить конфигурацию", flow.CommandStartFillUserConfig),
+			tgbotapi.NewInlineKeyboardButtonData("👤 Профиль", flow.CommandProfileMenu),
 		),
 	)
 

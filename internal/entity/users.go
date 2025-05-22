@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -82,6 +83,63 @@ func (u *UserConfiguration) CollectionName() string {
 	return "user_configurations"
 }
 
+func (u *UserConfiguration) String() string {
+	var userEmoji string
+	switch u.Gender {
+	case GenderMale:
+		userEmoji = "👨‍💼"
+	case GenderFemale:
+		userEmoji = "👩‍💼"
+	default:
+		userEmoji = "👨‍💼"
+	}
+
+	allergies := "-"
+	if len(u.Allergies) > 0 {
+		allergies = ""
+		for _, allergy := range u.Allergies {
+			allergies += fmt.Sprintf("%s, ", AllergenToText(allergy))
+		}
+		allergies = strings.TrimSuffix(allergies, ", ")
+	}
+
+	mealTypes := "-"
+	if len(u.MealTypes) > 0 {
+		mealTypes = ""
+		for _, mealType := range u.MealTypes {
+			mealTypes += fmt.Sprintf("%s, ", MealTypeToText(mealType))
+		}
+		mealTypes = strings.TrimSuffix(mealTypes, ", ")
+	}
+
+	return fmt.Sprintf(
+		`%s *Твой профиль*
+
+Рост: %d см
+Вес: %.1f кг
+Возраст: %d
+Пол: %s
+
+Цель: %s
+Активность: %s
+Тип диеты: %s
+
+Аллергии: %s
+Типы приёмов пищи: %s
+`,
+		userEmoji,
+		u.Height,
+		u.Weight,
+		u.Age,
+		GenderToText(u.Gender),
+		GoalToText(u.Goal),
+		ActivityToText(u.Activity),
+		DietTypeToText(u.DietType),
+		allergies,
+		mealTypes,
+	)
+}
+
 func GoalToText(goal string) string {
 	switch goal {
 	case GoalLoseWeight:
@@ -139,6 +197,44 @@ func GenderToText(gender string) string {
 		return "👩‍💼 Женский"
 	default:
 		return "👨‍💼 Мужской"
+	}
+}
+
+func MealTypeToText(mealType string) string {
+	switch mealType {
+	case MealTypeBreakfast:
+		return "Завтрак"
+	case MealTypeLunch:
+		return "Обед"
+	case MealTypeDinner:
+		return "Ужин"
+	case MealTypeSnack:
+		return "Перекус"
+	default:
+		return "Завтрак"
+	}
+}
+
+func AllergenToText(allergen string) string {
+	switch allergen {
+	case AllergenGluten:
+		return "Глютен"
+	case AllergenPeanuts:
+		return "Арахис"
+	case AllergenEggs:
+		return "Яйца"
+	case AllergenFish:
+		return "Рыба"
+	case AllergenTreeNuts:
+		return "Орехи"
+	case AllergenDairy:
+		return "Молоко"
+	case AllergenSoy:
+		return "Соя"
+	case AllergenShellfish:
+		return "Ракообразные"
+	default:
+		return "-"
 	}
 }
 

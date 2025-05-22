@@ -206,3 +206,11 @@ func (c *Client) GetUserConfiguration(userID int64) (*entity.UserConfiguration, 
 
 	return userConfiguration, err
 }
+
+func (c *Client) UpsertUserCalories(userCalories *entity.UserCalories) error {
+	collection := c.db.Collection(userCalories.CollectionName())
+
+	_, err := collection.InsertOne(context.TODO(), userCalories)
+
+	return err
+}

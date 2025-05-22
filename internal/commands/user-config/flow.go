@@ -222,10 +222,10 @@ var fillConfig = []FillConfig{
 					tgbotapi.NewInlineKeyboardButtonData("🪑 Сидячий", flow.CommandFillUserConfigActivitySedentary),
 				),
 				tgbotapi.NewInlineKeyboardRow(
-					tgbotapi.NewInlineKeyboardButtonData("🏃‍♂️ Малоактивный", flow.CommandFillUserConfigActivityLow),
+					tgbotapi.NewInlineKeyboardButtonData("🏃‍♂️ Малоактивный", flow.CommandFillUserConfigActivityLight),
 				),
 				tgbotapi.NewInlineKeyboardRow(
-					tgbotapi.NewInlineKeyboardButtonData("🏋️‍♂️ Умеренно активный", flow.CommandFillUserConfigActivityMedium),
+					tgbotapi.NewInlineKeyboardButtonData("🏋️‍♂️ Умеренно активный", flow.CommandFillUserConfigActivityModerate),
 				),
 				tgbotapi.NewInlineKeyboardRow(
 					tgbotapi.NewInlineKeyboardButtonData("💪 Активный", flow.CommandFillUserConfigActivityHigh),
@@ -246,10 +246,10 @@ var fillConfig = []FillConfig{
 						tgbotapi.NewInlineKeyboardButtonData("🪑 Сидячий", flow.CommandFillUserConfigActivitySedentary),
 					),
 					tgbotapi.NewInlineKeyboardRow(
-						tgbotapi.NewInlineKeyboardButtonData("🏃‍♂️ Малоактивный", flow.CommandFillUserConfigActivityLow),
+						tgbotapi.NewInlineKeyboardButtonData("🏃‍♂️ Малоактивный", flow.CommandFillUserConfigActivityLight),
 					),
 					tgbotapi.NewInlineKeyboardRow(
-						tgbotapi.NewInlineKeyboardButtonData("🏋️‍♂️ Умеренно активный", flow.CommandFillUserConfigActivityMedium),
+						tgbotapi.NewInlineKeyboardButtonData("🏋️‍♂️ Умеренно активный", flow.CommandFillUserConfigActivityModerate),
 					),
 					tgbotapi.NewInlineKeyboardRow(
 						tgbotapi.NewInlineKeyboardButtonData("💪 Активный", flow.CommandFillUserConfigActivityHigh),
@@ -591,7 +591,25 @@ func (c *Commands) ExecuteFillment(
 			}
 		}
 
-		msg := tgbotapi.NewMessage(meta.ChatID, "Конфигурация завершена!")
+		userCalories := entity.UserCalories{}
+		userCalories.CalculateCalories(userConfig)
+
+		if err := c.repository.UpsertUserCalories(&userCalories); err != nil {
+			c.logger.Errorw("error saving user calories", "error", err)
+			return []tgbotapi.Chattable{
+				tgbotapi.NewMessage(meta.ChatID, "произошла ошибка при сохранении данных"),
+			}
+		}
+
+		completeMsg := fmt.Sprintf(`
+🎉 Конфигурация завершена!
+
+🔥 На основе твоих параметров и цели, твой суточный калораж: *%d ккал*
+
+Теперь можно перейти к подбору рациона! 🥗`, userCalories.GoalCalories)
+
+		msg := tgbotapi.NewMessage(meta.ChatID, completeMsg)
+		msg.ParseMode = "Markdown"
 		messages = append(messages, msg)
 
 		return messages

@@ -9,14 +9,15 @@ import (
 )
 
 const (
-	CommandStart               = "/start"
-	CommandMenu                = "/menu"
-	CommandGenerateDiet        = "/generate_diet"
-	CommandGenerateDietDays    = "/generate_diet_days_"
-	CommandSeeDiet             = "/see_diet"
-	CommandSeeDietDay          = "/see_diet_day_"
-	CommandSeeDietProducts     = "/see_diet_products"
-	CommandFillConfig          = "/fill_config"
+	CommandStart            = "/start"
+	CommandMenu             = "/menu"
+	CommandProfileMenu      = "/profile_menu"
+	CommandGenerateDiet     = "/generate_diet"
+	CommandGenerateDietDays = "/generate_diet_days_"
+	CommandSeeDiet          = "/see_diet"
+	CommandSeeDietDay       = "/see_diet_day_"
+	CommandSeeDietProducts  = "/see_diet_products"
+
 	CommandStartFillUserConfig = "/start_fill_user_config"
 
 	CommandFillUserConfigGender       = "/fill_user_config_gender_"
@@ -30,10 +31,10 @@ const (
 
 	CommandFillUserConfigActivity          = "/fill_user_config_activity_"
 	CommandFillUserConfigActivitySedentary = "/fill_user_config_activity_sedentary"
-	CommandFillUserConfigActivityLow       = "/fill_user_config_activity_low"
-	CommandFillUserConfigActivityMedium    = "/fill_user_config_activity_medium"
-	CommandFillUserConfigActivityHigh      = "/fill_user_config_activity_high"
-	CommandFillUserConfigActivityVeryHigh  = "/fill_user_config_activity_very_high"
+	CommandFillUserConfigActivityLight     = "/fill_user_config_activity_light"
+	CommandFillUserConfigActivityModerate  = "/fill_user_config_activity_moderate"
+	CommandFillUserConfigActivityHigh      = "/fill_user_config_activity_active"
+	CommandFillUserConfigActivityVeryHigh  = "/fill_user_config_activity_very_active"
 
 	CommandFillUserConfigDietType              = "/fill_user_config_diet_type_"
 	CommandFillUserConfigDietTypeAnything      = "/fill_user_config_diet_type_anything"

@@ -92,6 +92,21 @@ func (l *Listener) handleCallback(update *tgbotapi.Update) (tgbotapi.Chattable, 
 		}
 
 		return msg, nil
+	case data == flow.CommandProfileMenu:
+		l.logger.Info("User pressed the profile menu button")
+
+		deleteMsg := tgbotapi.NewDeleteMessage(update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.Message.MessageID)
+		_, err := l.bot.Send(deleteMsg)
+		if err != nil {
+			l.logger.Error("Failed to delete message", zap.Error(err))
+		}
+
+		msg, err := l.commands.ProfileMenu(context.Background(), update)
+		if err != nil {
+			return nil, err
+		}
+
+		return msg, nil
 	case data == flow.CommandSeeDietProducts:
 		l.logger.Info("User pressed the see diet products button")
 
